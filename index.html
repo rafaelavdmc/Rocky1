@@ -275,44 +275,6 @@ JEITO DE FALAR:
         }
     ];
 
-    let modeloValido = null;
-
-    async function obterModeloValido(apiKey) {
-        if (modeloValido) return modeloValido;
-
-        // Lista estrita de modelos padrao suportados sem termos especiais
-        const modelosPermitidos = [
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile",
-            "llama3-8b-8192",
-            "gemma2-9b-it"
-        ];
-
-        try {
-            const res = await fetch('https://api.groq.com/openai/v1/models', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${apiKey}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                const ids = data.data.map(m => m.id);
-                
-                for (let modelId of modelosPermitidos) {
-                    if (ids.includes(modelId)) {
-                        modeloValido = modelId;
-                        return modelId;
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("Erro ao verificar modelos da Groq:", e);
-        }
-
-        modeloValido = "llama-3.1-8b-instant";
-        return modeloValido;
-    }
-
     async function sendMessage() {
         const apiKey = document.getElementById('apiKey').value.trim();
         const input = document.getElementById('userInput');
@@ -333,8 +295,6 @@ JEITO DE FALAR:
         
         historico.push({ role: "user", content: text });
 
-        const modelSelected = await obterModeloValido(apiKey);
-
         try {
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -343,7 +303,7 @@ JEITO DE FALAR:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: modelSelected,
+                    model: 'llama-3.1-8b-instant',
                     messages: historico,
                     max_tokens: 120,
                     temperature: 0.7
