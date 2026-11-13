@@ -173,7 +173,6 @@
 </div>
 
 <script>
-    // Tabela Eridiana
     const ALFABETO_ERIDIANO = {
         'a': [440, 554, 659], 'b': [493, 622, 739], 'c': [523, 659, 783],
         'd': [587, 739, 880], 'e': [659, 830, 987], 'f': [698, 880, 1046],
@@ -186,14 +185,12 @@
         'y': [4698, 5919, 7040], 'z': [5274, 6644, 7902], ' ': [0, 0, 0]
     };
 
-    // 1. Sintetizador de Som Eridiano Grave & Acústico (Web Audio API)
     function tocarSomEridiano(texto) {
         return new Promise((resolve) => {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             const audioCtx = new AudioCtx();
             const textoLimpo = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             
-            // Filtro passa-baixas para aveludar o som no navegador
             const lowpass = audioCtx.createBiquadFilter();
             lowpass.type = "lowpass";
             lowpass.frequency.setValueAtTime(850, audioCtx.currentTime);
@@ -206,7 +203,6 @@
                 const freqs = ALFABETO_ERIDIANO[char] || [440, 440, 440];
                 if (freqs.reduce((a, b) => a + b, 0) > 0) {
                     freqs.forEach(freq => {
-                        // Frequência ajustada para tom grave e ressonante (0.28x)
                         const fEridiana = freq * 0.28;
 
                         const oscFund = audioCtx.createOscillator();
@@ -220,7 +216,7 @@
                         oscSub.type = 'sine';
                         oscSub.frequency.setValueAtTime(fEridiana * 0.5, startTime);
 
-                        oscHarm.type = 'triangle'; // Timbre estilo ocarina/madeira
+                        oscHarm.type = 'triangle';
                         oscHarm.frequency.setValueAtTime(fEridiana * 2, startTime);
 
                         const vol = 0.15 / freqs.length;
@@ -250,14 +246,13 @@
         });
     }
 
-    // 2. Sintetizador de Voz Robótica (Web Speech API)
     function falarVozRobotica(texto) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Limpa falas anteriores
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(texto);
             utterance.lang = 'pt-BR';
-            utterance.pitch = 0.3; // Tom grave e robótico
-            utterance.rate = 0.85; // Ritmo pausado e cadenciado de robô
+            utterance.pitch = 0.3;
+            utterance.rate = 0.85;
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -275,20 +270,65 @@ JEITO DE FALAR:
         }
     ];
 
-async function sendMessage() {
+    let modeloAutoDetectado = null;
+
+    // Seleciona dinamicamente o modelo disponível na chave Groq fornecida
+    async function escolherModeloGroq(apiKey) {
+        if (modeloAutoDetectado) return modeloAutoDetectado;
+
+        const modelosRecomendados = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "llama3-8b-8192",
+            "gemma2-9b-it"
+        ];
+
+        try {
+            const res = await fetch('https://api.groq.com/openai/v1/models', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const disponiveis = data.data.map(m => m.id);
+
+                for (let rec of modelosRecomendados) {
+                    if (disponiveis.includes(rec)) {
+                        modeloAutoDetectado = rec;
+                        return rec;
+                    }
+                }
+
+                const fallback = disponiveis.find(d => !["guard", "whisper", "vision", "embed", "tts", "stt"].some(x => d.toLowerCase().includes(x)));
+                if (fallback) {
+                    modeloAutoDetectado = fallback;
+                    return fallback;
+                }
+            }
+        } catch (e) {
+            console.error("Erro ao listar modelos:", e);
+        }
+
+        return "llama-3.1-8b-instant";
+    }
+
+    async function sendMessage() {
         const apiKey = document.getElementById('apiKey').value.trim();
         const input = document.getElementById('userInput');
         const text = input.value.trim();
 
         if (!text) return;
         if (!apiKey) {
-            alert("Cole a sua chave API da Groq (gsk_...) no topo do site!");
+            alert("Cole sua chave API da Groq (gsk_...) no topo do site!");
             return;
         }
 
         appendMessage('user', text);
         input.value = '';
         historico.push({ role: "user", content: text });
+
+        const modeloUsar = await escolherModeloGroq(apiKey);
 
         try {
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -298,7 +338,7 @@ async function sendMessage() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                    model: modeloUsar,
                     messages: historico,
                     max_tokens: 100,
                     temperature: 0.75
@@ -319,12 +359,11 @@ async function sendMessage() {
             historico.push({ role: "assistant", content: textoLimpo });
             appendMessage('rocky', textoLimpo);
 
-            // Sequência de Áudio: 1º Som Alienígena Eridiano -> 2º Tradução com Voz Robótica
             await tocarSomEridiano(textoLimpo);
             falarVozRobotica(textoLimpo);
 
         } catch (err) {
-            appendMessage('rocky', "Erro na ligação com a Groq! Verifique a sua chave.");
+            appendMessage('rocky', "Erro na conexao com a Groq! Verifique sua chave.");
             console.error(err);
         }
     }
