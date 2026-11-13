@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispositivo A — Rocky</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(23, 32, 54, 0.85);
+            --border-color: rgba(16, 185, 129, 0.3);
+            --primary-green: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --user-bubble: #1e293b;
+            --rocky-bubble: rgba(16, 185, 129, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-card {
+            width: 100%;
+            max-width: 750px;
+            height: 88vh;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px var(--primary-glow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 18px 24px;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            color: var(--primary-green);
+        }
+
+        .api-key-container {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .api-key-container input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.rocky {
+            align-self: flex-start;
+            background: var(--rocky-bubble);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-author {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        .message.rocky .message-author { color: var(--primary-green); }
+        .message.user .message-author { color: var(--text-muted); }
+
+        .footer {
+            padding: 16px 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+
+        .footer input {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: #fff;
+            outline: none;
+        }
+
+        .footer button {
+            background: var(--primary-green);
+            color: #052e16;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-card">
+    <div class="header">
+        <h1>🛸 Dispositivo A — Comunicador Eridiano (Rocky)</h1>
+    </div>
+
+    <div class="api-key-container">
+        <input type="password" id="apiKey" placeholder="Cole sua API Key da Groq (gsk_...)" />
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="message rocky">
+            <div class="message-author">🤖 Rocky</div>
+            Ola humano! O que vamos analisar hoje? Amaze, amaze, amaze!
+        </div>
+    </div>
+
+    <div class="footer">
+        <input type="text" id="userInput" placeholder="Escreva uma mensagem..." onkeypress="handleKeyPress(event)" />
+        <button onclick="sendMessage()">Enviar 🚀</button>
+    </div>
+</div>
+
+<script>
+    // Tabela Eridiana
+    const ALFABETO_ERIDIANO = {
+        'a': [440, 554, 659], 'b': [493, 622, 739], 'c': [523, 659, 783],
+        'd': [587, 739, 880], 'e': [659, 830, 987], 'f': [698, 880, 1046],
+        'g': [783, 987, 1174], 'h': [880, 1108, 1318], 'i': [987, 1244, 1479],
+        'j': [1046, 1318, 1567], 'k': [1174, 1479, 1760], 'l': [1318, 1661, 1975],
+        'm': [1396, 1760, 2093], 'n': [1567, 1975, 2349], 'o': [1760, 2217, 2637],
+        'p': [1975, 2489, 2959], 'q': [2093, 2637, 3135], 'r': [2349, 2959, 3520],
+        's': [2637, 3322, 3951], 't': [2793, 3520, 4186], 'u': [3135, 3951, 4698],
+        'v': [3520, 4434, 5274], 'w': [3951, 4978, 5919], 'x': [4186, 5274, 6271],
+        'y': [4698, 5919, 7040], 'z': [5274, 6644, 7902], ' ': [0, 0, 0]
+    };
+
+    // 1. Sintetizador de Som Eridiano Grave & Acústico (Web Audio API)
+    function tocarSomEridiano(texto) {
+        return new Promise((resolve) => {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioCtx();
+            const textoLimpo = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            
+            // Filtro passa-baixas para aveludar o som no navegador
+            const lowpass = audioCtx.createBiquadFilter();
+            lowpass.type = "lowpass";
+            lowpass.frequency.setValueAtTime(850, audioCtx.currentTime);
+            lowpass.connect(audioCtx.destination);
+
+            let startTime = audioCtx.currentTime + 0.05;
+            const duracaoNota = 0.16;
+
+            for (let char of textoLimpo) {
+                const freqs = ALFABETO_ERIDIANO[char] || [440, 440, 440];
+                if (freqs.reduce((a, b) => a + b, 0) > 0) {
+                    freqs.forEach(freq => {
+                        // Frequência ajustada para tom grave e ressonante (0.28x)
+                        const fEridiana = freq * 0.28;
+
+                        const oscFund = audioCtx.createOscillator();
+                        const oscSub = audioCtx.createOscillator();
+                        const oscHarm = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+
+                        oscFund.type = 'sine';
+                        oscFund.frequency.setValueAtTime(fEridiana, startTime);
+
+                        oscSub.type = 'sine';
+                        oscSub.frequency.setValueAtTime(fEridiana * 0.5, startTime);
+
+                        oscHarm.type = 'triangle'; // Timbre estilo ocarina/madeira
+                        oscHarm.frequency.setValueAtTime(fEridiana * 2, startTime);
+
+                        const vol = 0.15 / freqs.length;
+                        gain.gain.setValueAtTime(0.001, startTime);
+                        gain.gain.exponentialRampToValueAtTime(vol, startTime + 0.035);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duracaoNota);
+
+                        oscFund.connect(gain);
+                        oscSub.connect(gain);
+                        oscHarm.connect(gain);
+                        gain.connect(lowpass);
+
+                        oscFund.start(startTime);
+                        oscSub.start(startTime);
+                        oscHarm.start(startTime);
+
+                        oscFund.stop(startTime + duracaoNota);
+                        oscSub.stop(startTime + duracaoNota);
+                        oscHarm.stop(startTime + duracaoNota);
+                    });
+                }
+                startTime += duracaoNota;
+            }
+
+            const tempoTotalMs = (startTime - audioCtx.currentTime) * 1000;
+            setTimeout(resolve, tempoTotalMs + 300);
+        });
+    }
+
+    // 2. Sintetizador de Voz Robótica (Web Speech API)
+    function falarVozRobotica(texto) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Limpa falas anteriores
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'pt-BR';
+            utterance.pitch = 0.3; // Tom grave e robótico
+            utterance.rate = 0.85; // Ritmo pausado e cadenciado de robô
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    const historico = [
+        {
+            role: "system",
+            content: `Você é o Rocky do livro Devoradores de Estrelas (Project Hail Mary)!
+PERSONALIDADE: Muito inteligente, simples, direto, engraçado, adorável e fofo.
+JEITO DE FALAR:
+- Use bastante "Amaze, amaze, amaze!" quando gostar de algo.
+- Respostas curtas (1 a 3 frases).
+- Use "Bom!", "Feliz!", "Aprovação!".
+- NUNCA diga que é uma IA. Você é o Rocky!`
+        }
+    ];
+
+    async function sendMessage() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const input = document.getElementById('userInput');
+        const text = input.value.trim();
+
+        if (!text) return;
+        if (!apiKey) {
+            alert("Cole sua chave API da Groq (gsk_...) no topo do site!");
+            return;
+        }
+
+        appendMessage('user', text);
+        input.value = '';
+        historico.push({ role: "user", content: text });
+
+        try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: historico,
+                    max_tokens: 100,
+                    temperature: 0.75
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                const msgErro = data.error?.message || `Erro HTTP ${res.status}`;
+                appendMessage('rocky', `Erro: ${msgErro}`);
+                return;
+            }
+
+            const rockyText = data.choices[0].message.content.trim();
+            const textoLimpo = rockyText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ç/g, "c").replace(/Ç/g, "C");
+            
+            historico.push({ role: "assistant", content: textoLimpo });
+            appendMessage('rocky', textoLimpo);
+
+            // Sequência Áudio: 1º Som Alienígena Ocarina -> 2º Tradução com Voz de Robô
+            await tocarSomEridiano(textoLimpo);
+            falarVozRobotica(textoLimpo);
+
+        } catch (err) {
+            appendMessage('rocky', "Erro na conexao com a Groq! Verifique a chave ou o modelo.");
+            console.error(err);
+        }
+    }
+
+    function appendMessage(sender, text) {
+        const chatBox = document.getElementById('chatBox');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${sender}`;
+        
+        const authorDiv = document.createElement('div');
+        authorDiv.className = 'message-author';
+        authorDiv.innerText = sender === 'user' ? 'Você' : '🤖 Rocky';
+        
+        msgDiv.appendChild(authorDiv);
+        msgDiv.appendChild(document.createTextNode(text));
+        
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+</script>
+
+</body>
+</html>
