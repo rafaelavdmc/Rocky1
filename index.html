@@ -146,6 +146,11 @@
             font-weight: bold;
             cursor: pointer;
         }
+
+        .footer button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -156,7 +161,7 @@
     </div>
 
     <div class="api-key-container">
-        <input type="password" id="apiKey" placeholder="Cole sua API Key da Groq (gsk_...)" />
+        <input type="password" id="apiKey" placeholder="Cole a sua API Key da Groq (gsk_...)" />
     </div>
 
     <div class="chat-box" id="chatBox">
@@ -168,7 +173,7 @@
 
     <div class="footer">
         <input type="text" id="userInput" placeholder="Escreva uma mensagem..." onkeypress="handleKeyPress(event)" />
-        <button onclick="sendMessage()">Enviar 🚀</button>
+        <button id="btnSend" onclick="sendMessage()">Enviar 🚀</button>
     </div>
 </div>
 
@@ -242,7 +247,7 @@
             }
 
             const tempoTotalMs = (startTime - audioCtx.currentTime) * 1000;
-            setTimeout(resolve, tempoTotalMs + 300);
+            setTimeout(resolve, Math.max(tempoTotalMs, 400));
         });
     }
 
@@ -261,7 +266,7 @@
         {
             role: "system",
             content: `Você é o Rocky do livro Devoradores de Estrelas (Project Hail Mary)!
-PERSONALIDADE: Muito inteligente, simples, direto, engraçado, adorável e fofo.
+PERSONALIDADE: Muito inteligente, simples, direto, engraçado, adorável e fofo. Responda sempre em português.
 JEITO DE FALAR:
 - Use bastante "Amaze, amaze, amaze!" quando gostar de algo.
 - Respostas curtas (1 a 3 frases).
@@ -270,18 +275,10 @@ JEITO DE FALAR:
         }
     ];
 
-    let modeloAutoDetectado = null;
+    let modeloValido = null;
 
-    // Seleciona dinamicamente o modelo disponível na chave Groq fornecida
-    async function escolherModeloGroq(apiKey) {
-        if (modeloAutoDetectado) return modeloAutoDetectado;
-
-        const modelosRecomendados = [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "llama3-8b-8192",
-            "gemma2-9b-it"
-        ];
+    async function obterModeloValido(apiKey) {
+        if (modeloValido) return modeloValido;
 
         try {
             const res = await fetch('https://api.groq.com/openai/v1/models', {
@@ -291,44 +288,52 @@ JEITO DE FALAR:
 
             if (res.ok) {
                 const data = await res.json();
-                const disponiveis = data.data.map(m => m.id);
-
-                for (let rec of modelosRecomendados) {
-                    if (disponiveis.includes(rec)) {
-                        modeloAutoDetectado = rec;
-                        return rec;
+                const ids = data.data.map(m => m.id);
+                
+                const deInteresse = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it", "llama3-8b-8192"];
+                for (let modelId of deInteresse) {
+                    if (ids.includes(modelId)) {
+                        modeloValido = modelId;
+                        return modelId;
                     }
                 }
-
-                const fallback = disponiveis.find(d => !["guard", "whisper", "vision", "embed", "tts", "stt"].some(x => d.toLowerCase().includes(x)));
-                if (fallback) {
-                    modeloAutoDetectado = fallback;
-                    return fallback;
+                const generico = ids.find(id => !["guard", "whisper", "vision", "embed", "tts", "stt"].some(k => id.toLowerCase().includes(k)));
+                if (generico) {
+                    modeloValido = generico;
+                    return generico;
                 }
             }
         } catch (e) {
-            console.error("Erro ao listar modelos:", e);
+            console.error("Erro ao procurar modelos:", e);
         }
 
-        return "llama-3.1-8b-instant";
+        modeloValido = "llama-3.1-8b-instant";
+        return modeloValido;
     }
 
     async function sendMessage() {
         const apiKey = document.getElementById('apiKey').value.trim();
         const input = document.getElementById('userInput');
+        const btn = document.getElementById('btnSend');
         const text = input.value.trim();
 
         if (!text) return;
         if (!apiKey) {
-            alert("Cole sua chave API da Groq (gsk_...) no topo do site!");
+            alert("Cole a sua chave API da Groq (gsk_...) no topo do site!");
             return;
         }
 
+        // Desativa a entrada enquanto processa a resposta
+        input.disabled = true;
+        btn.disabled = true;
+
         appendMessage('user', text);
         input.value = '';
+        
+        // Adiciona ao histórico garantindo que não há campos vazios
         historico.push({ role: "user", content: text });
 
-        const modeloUsar = await escolherModeloGroq(apiKey);
+        const modelSelected = await obterModeloValido(apiKey);
 
         try {
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -338,10 +343,10 @@ JEITO DE FALAR:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: modeloUsar,
+                    model: modelSelected,
                     messages: historico,
-                    max_tokens: 100,
-                    temperature: 0.75
+                    max_tokens: 120,
+                    temperature: 0.7
                 })
             });
 
@@ -350,21 +355,28 @@ JEITO DE FALAR:
             if (!res.ok) {
                 const msgErro = data.error?.message || `Erro HTTP ${res.status}`;
                 appendMessage('rocky', `Erro: ${msgErro}`);
-                return;
+                historico.pop(); // Remove a última mensagem em caso de erro para não corromper o chat
+            } else {
+                let rockyText = data.choices[0].message.content.trim();
+                
+                // Normaliza o texto removendo acentos para o áudio eridiano
+                const textoLimpo = rockyText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ç/g, "c").replace(/Ç/g, "C");
+                
+                historico.push({ role: "assistant", content: rockyText });
+                appendMessage('rocky', rockyText);
+
+                await tocarSomEridiano(textoLimpo);
+                falarVozRobotica(rockyText);
             }
 
-            const rockyText = data.choices[0].message.content.trim();
-            const textoLimpo = rockyText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ç/g, "c").replace(/Ç/g, "C");
-            
-            historico.push({ role: "assistant", content: textoLimpo });
-            appendMessage('rocky', textoLimpo);
-
-            await tocarSomEridiano(textoLimpo);
-            falarVozRobotica(textoLimpo);
-
         } catch (err) {
-            appendMessage('rocky', "Erro na conexao com a Groq! Verifique sua chave.");
+            appendMessage('rocky', "Erro na conexao com a Groq! Verifique a sua chave.");
+            historico.pop();
             console.error(err);
+        } finally {
+            input.disabled = false;
+            btn.disabled = false;
+            input.focus();
         }
     }
 
