@@ -275,14 +275,14 @@ JEITO DE FALAR:
         }
     ];
 
-    async function sendMessage() {
+async function sendMessage() {
         const apiKey = document.getElementById('apiKey').value.trim();
         const input = document.getElementById('userInput');
         const text = input.value.trim();
 
         if (!text) return;
         if (!apiKey) {
-            alert("Cole sua chave API da Groq (gsk_...) no topo do site!");
+            alert("Cole a sua chave API da Groq (gsk_...) no topo do site!");
             return;
         }
 
@@ -298,7 +298,7 @@ JEITO DE FALAR:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                   model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.1-8b-instant',
                     messages: historico,
                     max_tokens: 100,
                     temperature: 0.75
@@ -319,12 +319,12 @@ JEITO DE FALAR:
             historico.push({ role: "assistant", content: textoLimpo });
             appendMessage('rocky', textoLimpo);
 
-            // Sequência Áudio: 1º Som Alienígena Ocarina -> 2º Tradução com Voz de Robô
+            // Sequência de Áudio: 1º Som Alienígena Eridiano -> 2º Tradução com Voz Robótica
             await tocarSomEridiano(textoLimpo);
             falarVozRobotica(textoLimpo);
 
         } catch (err) {
-            appendMessage('rocky', "Erro na conexao com a Groq! Verifique a chave ou o modelo.");
+            appendMessage('rocky', "Erro na ligação com a Groq! Verifique a sua chave.");
             console.error(err);
         }
     }
