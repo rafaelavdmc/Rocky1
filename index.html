@@ -66,10 +66,12 @@
             padding: 12px 20px;
             background: rgba(0, 0, 0, 0.25);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 10px;
         }
 
         .api-key-container input {
-            width: 100%;
+            flex: 2;
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid var(--border-color);
             padding: 8px 14px;
@@ -77,6 +79,18 @@
             color: #fff;
             font-size: 0.85rem;
             outline: none;
+        }
+
+        .api-key-container select {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 8px 10px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
         }
 
         .chat-box {
@@ -162,6 +176,12 @@
 
     <div class="api-key-container">
         <input type="password" id="apiKey" placeholder="Cole a sua API Key da Groq (gsk_...)" />
+        <select id="modelSelect">
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+            <option value="llama3-8b-8192">llama3-8b-8192</option>
+            <option value="gemma2-9b-it">gemma2-9b-it</option>
+        </select>
     </div>
 
     <div class="chat-box" id="chatBox">
@@ -277,6 +297,7 @@ JEITO DE FALAR:
 
     async function sendMessage() {
         const apiKey = document.getElementById('apiKey').value.trim();
+        const selectedModel = document.getElementById('modelSelect').value;
         const input = document.getElementById('userInput');
         const btn = document.getElementById('btnSend');
         const text = input.value.trim();
@@ -303,7 +324,7 @@ JEITO DE FALAR:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                    model: selectedModel,
                     messages: historico,
                     max_tokens: 120,
                     temperature: 0.7
