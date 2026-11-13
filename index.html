@@ -280,6 +280,14 @@ JEITO DE FALAR:
     async function obterModeloValido(apiKey) {
         if (modeloValido) return modeloValido;
 
+        // Lista estrita de modelos padrao suportados sem termos especiais
+        const modelosPermitidos = [
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
+            "llama3-8b-8192",
+            "gemma2-9b-it"
+        ];
+
         try {
             const res = await fetch('https://api.groq.com/openai/v1/models', {
                 method: 'GET',
@@ -290,21 +298,15 @@ JEITO DE FALAR:
                 const data = await res.json();
                 const ids = data.data.map(m => m.id);
                 
-                const deInteresse = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it", "llama3-8b-8192"];
-                for (let modelId of deInteresse) {
+                for (let modelId of modelosPermitidos) {
                     if (ids.includes(modelId)) {
                         modeloValido = modelId;
                         return modelId;
                     }
                 }
-                const generico = ids.find(id => !["guard", "whisper", "vision", "embed", "tts", "stt"].some(k => id.toLowerCase().includes(k)));
-                if (generico) {
-                    modeloValido = generico;
-                    return generico;
-                }
             }
         } catch (e) {
-            console.error("Erro ao procurar modelos:", e);
+            console.error("Erro ao verificar modelos da Groq:", e);
         }
 
         modeloValido = "llama-3.1-8b-instant";
@@ -323,14 +325,12 @@ JEITO DE FALAR:
             return;
         }
 
-        // Desativa a entrada enquanto processa a resposta
         input.disabled = true;
         btn.disabled = true;
 
         appendMessage('user', text);
         input.value = '';
         
-        // Adiciona ao histórico garantindo que não há campos vazios
         historico.push({ role: "user", content: text });
 
         const modelSelected = await obterModeloValido(apiKey);
@@ -355,11 +355,10 @@ JEITO DE FALAR:
             if (!res.ok) {
                 const msgErro = data.error?.message || `Erro HTTP ${res.status}`;
                 appendMessage('rocky', `Erro: ${msgErro}`);
-                historico.pop(); // Remove a última mensagem em caso de erro para não corromper o chat
+                historico.pop();
             } else {
                 let rockyText = data.choices[0].message.content.trim();
                 
-                // Normaliza o texto removendo acentos para o áudio eridiano
                 const textoLimpo = rockyText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ç/g, "c").replace(/Ç/g, "C");
                 
                 historico.push({ role: "assistant", content: rockyText });
